@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Five Nights at Visual Code</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fuentes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- Estilos propios -->
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body class="w-screen h-screen relative bg-black select-none">
+
+    <!-- CRT & ESTÁTICA -->
+    <div class="crt-overlay absolute inset-0 z-50"></div>
+    <canvas id="staticCanvas" class="static-canvas z-40"></canvas>
+
+    <!-- ==================== MENÚ PRINCIPAL ==================== -->
+    <div id="mainMenu" class="absolute inset-0 z-30 flex flex-col justify-between p-6 md:p-10 bg-black/95">
+        <div class="mt-8 text-center md:text-left md:ml-12">
+            <h1 class="text-5xl md:text-7xl font-vt323 tracking-widest text-red-600 drop-shadow-[0_4px_12px_rgba(255,0,0,0.8)] animate-pulse">
+                FIVE NIGHTS AT
+            </h1>
+            <h2 class="text-4xl md:text-6xl font-vt323 tracking-wider text-gray-200 mt-1">
+                VISUAL CODE <span class="text-lg text-yellow-500 font-sans tracking-normal border border-yellow-500/50 px-2.5 py-0.5 rounded ml-2">V1.2</span>
+            </h2>
+            <p class="text-gray-400 mt-2 max-w-lg text-xs md:text-sm leading-relaxed">
+                Sobrevive de 12 AM a 6 AM administrando la energía. Sistema de IA basado en tiradas de RNG de FNAF 1 (ticks de 4.97s).
+            </p>
+        </div>
+
+        <div class="my-6 md:ml-12 space-y-3 max-w-sm">
+            <button id="btnStartGame" class="w-full py-3.5 bg-red-950/90 hover:bg-red-800 text-red-100 font-bold border-2 border-red-600 rounded-lg shadow-lg shadow-red-950/60 transition duration-150 transform hover:scale-105 active:scale-95 text-lg tracking-wider">
+                ► INICIAR NOCHE 1
+            </button>
+
+            <button id="btnOpenAssetManager" class="w-full py-2.5 bg-yellow-950/60 hover:bg-yellow-900/80 text-yellow-400 border border-yellow-600/60 rounded-lg text-sm font-bold flex items-center justify-center space-x-2 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span>Cargar / Gestionar Imágenes Locales</span>
+            </button>
+
+            <button id="btnControlsModal" class="w-full py-2 bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 rounded-lg text-xs transition">
+                Instrucciones & Mecánicas
+            </button>
+        </div>
+
+        <div class="text-xs text-gray-600 flex flex-col md:flex-row justify-between items-center border-t border-gray-800 pt-3 gap-2">
+            <span>Desafío Juego IA - Versión 1.2</span>
+            <span id="assetStatusSummary" class="text-yellow-500 font-mono">Assets: Sistema de imágenes listo</span>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL DE ASSETS ==================== -->
+    <div id="assetModal" class="hidden absolute inset-0 z-40 bg-black/95 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-yellow-600/50 p-6 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-xl font-bold text-yellow-400 flex items-center space-x-2">
+                    <span>🖼️ Cargador de Fotos Locales</span>
+                </h3>
+                <button id="btnCloseAssetModal" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+
+            <p class="text-xs text-gray-300 leading-relaxed">
+                Puedes seleccionar tus archivos de la carpeta local para visualizarlos de inmediato en el navegador.
+            </p>
+
+            <div class="p-3 bg-gray-800/80 rounded-lg border border-dashed border-yellow-500/40 text-center">
+                <p class="text-xs font-bold text-yellow-300 mb-1">⚡ CARGA MASIVA DE ARCHIVOS</p>
+                <input type="file" id="bulkFileInput" multiple accept="image/*" class="hidden">
+                <button onclick="document.getElementById('bulkFileInput').click()" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-black font-bold text-xs rounded transition">
+                    📂 Seleccionar Fotos (Oficina, Cámaras, Animatrónicos)
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-gray-200">Oficina (oficina.jpg)</span>
+                    <input type="file" data-asset-key="oficina" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-oficina" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-gray-200">Cámara 1 (camara1.jpg)</span>
+                    <input type="file" data-asset-key="camara1" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-camara1" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-gray-200">Cámara 2 (camara2.jpg)</span>
+                    <input type="file" data-asset-key="camara2" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-camara2" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-gray-200">Cámara 3 (camara3.jpg)</span>
+                    <input type="file" data-asset-key="camara3" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-camara3" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-gray-200">Cámara 4 (camara4.jpg)</span>
+                    <input type="file" data-asset-key="camara4" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-camara4" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-amber-400">Freddy (freddy.png)</span>
+                    <input type="file" data-asset-key="freddy" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-freddy" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-purple-400">Bonnie (bonnie.png)</span>
+                    <input type="file" data-asset-key="bonnie" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-bonnie" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-yellow-400">Chica (chica.png)</span>
+                    <input type="file" data-asset-key="chica" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-chica" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+                <div class="p-2.5 bg-gray-950 rounded border border-gray-800 flex flex-col space-y-1">
+                    <span class="font-bold text-red-400">Foxy (foxy.png)</span>
+                    <input type="file" data-asset-key="foxy" accept="image/*" class="asset-file-input text-[10px] text-gray-400">
+                    <span id="status-foxy" class="text-[10px] text-gray-500">Estado: Ruta Local / Fallback</span>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-gray-800 flex justify-end">
+                <button id="btnSaveAssetModal" class="px-6 py-2 bg-green-700 hover:bg-green-600 text-white font-bold rounded text-xs transition">
+                    Guardar y Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE INSTRUCCIONES -->
+    <div id="controlsModal" class="hidden absolute inset-0 z-40 bg-black/90 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 p-6 rounded-xl max-w-md w-full space-y-4 text-sm">
+            <h3 class="text-xl font-bold text-yellow-500 border-b border-gray-800 pb-2">Mecánicas de FNAF 1</h3>
+            <ul class="space-y-2 text-gray-300 text-xs">
+                <li><strong class="text-white">Cámaras:</strong> Pasa el mouse por la barra de la parte baja de la pantalla para abrir o cerrar el monitor. Dentro del monitor elige la cámara abajo a la derecha.</li>
+                <li><strong class="text-white">AI Ticks (4.97s):</strong> Cada 4.97s los personajes tiran un dado de 1 a 20. Si la tirada es ≤ a su Nivel de IA, avanzan.</li>
+                <li><strong class="text-white">Puertas:</strong> Haz clic en PUERTA para abrir o cerrar. Si la puerta está cerrada cuando Bonnie/Chica/Freddy llegan, rebotan de vuelta a CAM 1.</li>
+                <li><strong class="text-white">Foxy (CAM 4):</strong> Ver la CAM 4 congela la tirada de Foxy. Si llega a tu puerta izquierda cerrada, golpea drenando 5% de energía y vuelve a la fase 0.</li>
+            </ul>
+            <button id="btnCloseModal" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-white rounded mt-4 text-xs font-bold">
+                Entendido
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== ESCENA DEL JUEGO ==================== -->
+    <div id="gameContainer" class="hidden absolute inset-0 z-10 overflow-hidden bg-gray-950">
+
+        <!-- HUD SUPERIOR (siempre por encima de todo) -->
+        <div class="layer-hud absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
+            <div class="bg-black/85 backdrop-blur border border-gray-800 p-3 rounded-lg flex flex-col space-y-1">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-gray-400">ENERGÍA:</span>
+                    <span id="powerPercent" class="text-2xl font-bold text-green-400 font-vt323">100%</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <span class="text-[10px] text-gray-500 mr-1">USO:</span>
+                    <div id="usageBar1" class="w-3 h-3 bg-green-500 rounded-sm"></div>
+                    <div id="usageBar2" class="w-3 h-3 bg-gray-700 rounded-sm"></div>
+                    <div id="usageBar3" class="w-3 h-3 bg-gray-700 rounded-sm"></div>
+                    <div id="usageBar4" class="w-3 h-3 bg-gray-700 rounded-sm"></div>
+                </div>
+            </div>
+
+            <div class="bg-black/85 backdrop-blur border border-gray-800 p-3 rounded-lg text-right">
+                <div id="clockDisplay" class="text-3xl font-bold text-white font-vt323 tracking-widest">12 AM</div>
+                <div class="text-xs text-gray-400">NOCHE 1</div>
+            </div>
+        </div>
+
+        <!-- OFICINA -->
+        <div id="officeView" class="office-container relative w-full h-full flex items-center justify-center">
+
+            <img id="imgOficina" alt="Oficina" class="absolute w-full h-full object-cover">
+
+            <!-- PASILLO IZQUIERDO -->
+            <div id="leftLightOverlay" class="hidden layer-office-light absolute left-0 top-0 w-1/3 h-full bg-yellow-500/20 backdrop-brightness-150 mix-blend-screen pointer-events-none"></div>
+            <img id="leftDoorAnimatronic" alt="Enemigo Izq" class="hidden layer-door-anim absolute left-6 bottom-10 h-3/4 object-contain filter drop-shadow-[0_0_20px_rgba(0,0,0,0.9)] pointer-events-none">
+
+            <!-- PASILLO DERECHO -->
+            <div id="rightLightOverlay" class="hidden layer-office-light absolute right-0 top-0 w-1/3 h-full bg-yellow-500/20 backdrop-brightness-150 mix-blend-screen pointer-events-none"></div>
+            <img id="rightDoorAnimatronic" alt="Enemigo Der" class="hidden layer-door-anim absolute right-6 bottom-10 h-3/4 object-contain filter drop-shadow-[0_0_20px_rgba(0,0,0,0.9)] pointer-events-none">
+
+            <!-- PUERTAS VISUALES -->
+            <div id="leftDoorVisual" class="door-visual hidden layer-door absolute left-0 top-0 w-1/4 h-full bg-stone-900 border-r-4 border-stone-700 shadow-2xl flex items-center justify-center">
+                <div class="w-full h-full bg-gradient-to-r from-black via-stone-800 to-black opacity-95 flex flex-col justify-around py-12 items-center">
+                    <div class="w-3/4 h-4 bg-stone-950 rounded border border-stone-600"></div>
+                    <div class="w-3/4 h-4 bg-stone-950 rounded border border-stone-600"></div>
+                    <div class="w-3/4 h-4 bg-stone-950 rounded border border-stone-600"></div>
+                    <span class="text-xs text-red-600 font-bold tracking-widest border border-red-900 px-2 py-1 rounded bg-black">CERRADA</span>
+                </div>
+            </div>
+
+            <div id="rightDoorVisual" class="door-visual hidden layer-door absolute right-0 top-0 w-1/4 h-full bg-stone-900 border-l-4 border-stone-700 shadow-2xl flex items-center justify-center">
+                <div class="w-full h-full bg-gradient-to-r from-black via-stone-800 to-black opacity-95 flex flex-col justify-around py-12 items-center">
+                    <div class="w-3/4 h-4 bg-stone-950 rounded border border-stone-600"></div>
+                    <div class="w-3/4 h-4 bg-stone-950 rounded border border-stone-600"></div>
+                    <div class="w-3/4 h-4 bg-stone-950 rounded border border-stone-600"></div>
+                    <span class="text-xs text-red-600 font-bold tracking-widest border border-red-900 px-2 py-1 rounded bg-black">CERRADA</span>
+                </div>
+            </div>
+
+            <!-- CONTROLES PUERTA / LUZ IZQUIERDA (por encima de la puerta) -->
+            <div class="layer-controls absolute left-6 top-1/2 -translate-y-1/2 flex flex-col space-y-3">
+                <button id="btnLeftDoor" class="w-16 h-16 rounded-lg bg-gray-900 border-2 border-red-600 text-red-500 font-bold text-xs flex flex-col items-center justify-center shadow-lg active:scale-95 transition hover:bg-gray-800 cursor-pointer">
+                    <span>PUERTA</span>
+                    <span id="leftDoorStatus" class="text-[9px] text-gray-400">ABIERTA</span>
+                </button>
+                <button id="btnLeftLight" class="w-16 h-16 rounded-lg bg-gray-900 border-2 border-yellow-600 text-yellow-500 font-bold text-xs flex flex-col items-center justify-center shadow-lg active:scale-95 transition hover:bg-gray-800 cursor-pointer">
+                    <span>LUZ</span>
+                    <span id="leftLightStatus" class="text-[9px] text-gray-400">OFF</span>
+                </button>
+            </div>
+
+            <!-- CONTROLES PUERTA / LUZ DERECHA -->
+            <div class="layer-controls absolute right-6 top-1/2 -translate-y-1/2 flex flex-col space-y-3">
+                <button id="btnRightDoor" class="w-16 h-16 rounded-lg bg-gray-900 border-2 border-red-600 text-red-500 font-bold text-xs flex flex-col items-center justify-center shadow-lg active:scale-95 transition hover:bg-gray-800 cursor-pointer">
+                    <span>PUERTA</span>
+                    <span id="rightDoorStatus" class="text-[9px] text-gray-400">ABIERTA</span>
+                </button>
+                <button id="btnRightLight" class="w-16 h-16 rounded-lg bg-gray-900 border-2 border-yellow-600 text-yellow-500 font-bold text-xs flex flex-col items-center justify-center shadow-lg active:scale-95 transition hover:bg-gray-800 cursor-pointer">
+                    <span>LUZ</span>
+                    <span id="rightLightStatus" class="text-[9px] text-gray-400">OFF</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- APAGÓN -->
+        <div id="blackoutOverlay" class="layer-blackout absolute inset-0"></div>
+
+        <!-- VISOR DE CÁMARAS (cubre la oficina, puertas y controles) -->
+        <div id="cameraMonitor" class="hidden layer-monitor absolute inset-0 bg-black overflow-hidden">
+            <img id="imgCameraBackground" alt="Cam Background" class="absolute w-full h-full object-cover">
+
+            <div id="cameraAnimatronicsContainer" class="absolute inset-0 pointer-events-none">
+                <img id="camAnimFreddy" alt="Freddy" class="hidden absolute object-contain filter drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]">
+                <img id="camAnimBonnie" alt="Bonnie" class="hidden absolute object-contain filter drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]">
+                <img id="camAnimChica" alt="Chica" class="hidden absolute object-contain filter drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]">
+                <img id="camAnimFoxy" alt="Foxy" class="hidden absolute object-contain filter drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]">
+            </div>
+
+            <div class="absolute top-28 left-4 flex items-center space-x-3 bg-black/75 px-4 py-2 rounded border border-gray-800">
+                <div class="w-3 h-3 rounded-full bg-red-600 animate-ping"></div>
+                <span id="currentCamTitle" class="text-xl font-vt323 tracking-widest text-green-400">CAM 1 - ENTRADA PRINCIPAL</span>
+            </div>
+
+            <!-- Selector de cámara (abajo a la derecha, como el mapa del original) -->
+            <div class="absolute bottom-20 right-4 bg-black/70 border border-gray-700 rounded-lg p-3">
+                <p class="text-[10px] text-gray-400 mb-2 tracking-widest">SELECCIONAR CÁMARA</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button data-cam="1" class="btn-cam px-4 py-2 bg-green-950 border border-green-500 text-green-300 font-bold rounded text-xs hover:bg-green-800 transition cursor-pointer">CAM 1 (Entrada)</button>
+                    <button data-cam="2" class="btn-cam px-4 py-2 bg-gray-800 border border-gray-600 text-gray-300 font-bold rounded text-xs hover:bg-gray-700 transition cursor-pointer">CAM 2 (Central)</button>
+                    <button data-cam="3" class="btn-cam px-4 py-2 bg-gray-800 border border-gray-600 text-gray-300 font-bold rounded text-xs hover:bg-gray-700 transition cursor-pointer">CAM 3 (Pasillo)</button>
+                    <button data-cam="4" class="btn-cam px-4 py-2 bg-gray-800 border border-gray-600 text-gray-300 font-bold rounded text-xs hover:bg-gray-700 transition cursor-pointer">CAM 4 (Servidores)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ZONA HOVER DEL MONITOR (parte baja de la pantalla, siempre por encima del monitor) -->
+        <div id="monitorHoverZone" class="layer-hover-zone">
+            <span id="monitorHoverLabel">▲ CÁMARAS ▲</span>
+        </div>
+
+    </div>
+
+    <!-- SCREAMER / JUMPSCARE -->
+    <div id="jumpscareOverlay" class="hidden absolute inset-0 z-50 bg-black flex items-center justify-center overflow-hidden">
+        <div id="screamerFlash" class="absolute inset-0 bg-red-600/50 z-10 alarm-active"></div>
+        <img id="jumpscareImage" src="" alt="Jumpscare" class="screamer-active relative z-20 max-w-full max-h-full object-contain scale-125">
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="gameOverMenu" class="hidden absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 text-center">
+        <h1 class="text-7xl font-vt323 text-red-600 tracking-widest mb-2 animate-bounce">GAME OVER</h1>
+        <p class="text-gray-400 text-sm mb-8">Un animatrónico ingresó a la oficina...</p>
+        <button id="btnRetry" class="px-8 py-3 bg-red-900 hover:bg-red-700 text-white font-bold rounded-lg border border-red-500 transition cursor-pointer">
+            REINTENTAR NOCHE
+        </button>
+    </div>
+
+    <!-- VICTORIA -->
+    <div id="victoryMenu" class="hidden absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 text-center">
+        <h1 class="text-8xl font-vt323 text-yellow-400 tracking-widest mb-4 animate-pulse">6:00 AM</h1>
+        <h2 class="text-2xl text-green-400 font-bold mb-2">¡HAS SOBREVIVIDO A LA NOCHE!</h2>
+        <p class="text-gray-400 text-sm mb-8">Completaste con éxito tu turno en Visual Code.</p>
+        <button id="btnVictoryMenu" class="px-8 py-3 bg-yellow-600 hover:bg-yellow-500 text-black font-bold rounded-lg transition cursor-pointer">
+            VOLVER AL MENÚ
+        </button>
+    </div>
+
+    <!-- LÓGICA DEL JUEGO -->
+    <script src="static/js/script.js"></script>
+</body>
+</html>

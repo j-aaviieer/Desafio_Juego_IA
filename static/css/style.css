@@ -1,0 +1,135 @@
+/* ===== Five Nights at Visual Code - estilos ===== */
+
+body {
+    font-family: 'Share Tech Mono', monospace;
+    background-color: #050505;
+    color: #e0e0e0;
+    overflow: hidden;
+    user-select: none;
+}
+
+.font-vt323 { font-family: 'VT323', monospace; }
+
+/* ===== CAPAS (z-index) =====
+   Tailwind CDN NO tiene clases z-15, z-25 ni z-35, por eso las puertas
+   tapaban los botones y se veían encima del monitor. Aquí se definen bien. */
+.layer-office-light { z-index: 10; }
+.layer-door-anim    { z-index: 15; }
+.layer-door         { z-index: 20; }
+.layer-controls     { z-index: 30; }
+.layer-monitor      { z-index: 40; }
+.layer-blackout     { z-index: 45; }
+.layer-hover-zone   { z-index: 50; }
+.layer-hud          { z-index: 60; }
+
+/* Efecto de líneas CRT */
+.crt-overlay {
+    background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.35) 50%
+    ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.03),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.03)
+    );
+    background-size: 100% 4px, 6px 100%;
+    pointer-events: none;
+}
+
+/* Estática de TV */
+.static-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.12;
+    pointer-events: none;
+}
+
+.office-container {
+    transition: transform 0.2s ease-out;
+    background-size: cover;
+    background-position: center;
+}
+
+/* Puertas visuales: nunca deben bloquear clics */
+.door-visual { pointer-events: none; }
+
+/* Apagón */
+#blackoutOverlay {
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.3s;
+    pointer-events: none;
+}
+#blackoutOverlay.blackout-on { background: rgba(0, 0, 0, 0.95); }
+
+/* Zona de hover para abrir/cerrar el monitor (parte baja de la pantalla) */
+#monitorHoverZone {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(28rem, 80%);
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(17, 24, 39, 0.75);
+    border: 2px solid #4b5563;
+    border-bottom: none;
+    border-radius: 0.75rem 0.75rem 0 0;
+    color: #d1d5db;
+    letter-spacing: 0.2em;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+#monitorHoverZone:hover {
+    background: rgba(31, 41, 55, 0.95);
+    border-color: #4ade80;
+}
+
+/* Animación para el Jumpscare */
+@keyframes jumpscare-shake {
+    0% { transform: scale(1.1) translate(0, 0) rotate(0deg); }
+    10% { transform: scale(1.4) translate(-25px, 20px) rotate(-6deg); }
+    20% { transform: scale(1.45) translate(25px, -20px) rotate(6deg); }
+    30% { transform: scale(1.35) translate(-30px, -15px) rotate(-4deg); }
+    40% { transform: scale(1.55) translate(30px, 20px) rotate(7deg); }
+    50% { transform: scale(1.5) translate(-20px, 25px) rotate(-7deg); }
+    60% { transform: scale(1.4) translate(25px, -25px) rotate(4deg); }
+    70% { transform: scale(1.55) translate(-25px, 15px) rotate(-5deg); }
+    80% { transform: scale(1.45) translate(20px, -20px) rotate(3deg); }
+    90% { transform: scale(1.5) translate(-15px, 15px) rotate(-3deg); }
+    100% { transform: scale(1.45) translate(0, 0) rotate(0deg); }
+}
+
+.screamer-active { animation: jumpscare-shake 0.06s infinite alternate; }
+
+@keyframes red-alarm {
+    0%, 100% { background-color: rgba(255, 0, 0, 0.45); }
+    50% { background-color: rgba(40, 0, 0, 0.85); }
+}
+
+.alarm-active { animation: red-alarm 0.35s infinite; }
+
+/* Posiciones de animatrónicos en cámaras */
+.pos-cam1-freddy { top: 25%; left: 42%; height: 55%; }
+.pos-cam1-bonnie { top: 28%; left: 18%; height: 50%; }
+.pos-cam1-chica  { top: 28%; right: 18%; height: 50%; }
+
+.pos-cam2-chica  { top: 30%; left: 25%; height: 55%; }
+.pos-cam2-freddy { top: 28%; right: 25%; height: 55%; }
+
+.pos-cam3-bonnie { top: 22%; left: 35%; height: 60%; }
+.pos-cam3-foxy   { top: 25%; left: 15%; height: 55%; }
+
+.pos-cam4-foxy   { top: 30%; left: 40%; height: 50%; }
+.pos-cam4-freddy { top: 25%; right: 20%; height: 50%; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0f; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
