@@ -1,4 +1,4 @@
-/* ===== Five Nights at Visual Code - estilos ===== */
+/* ===== 5 clases en programación - estilos ===== */
 
 body {
     font-family: 'Share Tech Mono', monospace;
@@ -11,8 +11,7 @@ body {
 .font-vt323 { font-family: 'VT323', monospace; }
 
 /* ===== CAPAS (z-index) =====
-   Tailwind CDN NO tiene clases z-15, z-25 ni z-35, por eso las puertas
-   tapaban los botones y se veían encima del monitor. Aquí se definen bien. */
+   Tailwind CDN no tiene z-15/z-25/z-35, por eso se definen aquí. */
 .layer-office-light { z-index: 10; }
 .layer-door-anim    { z-index: 15; }
 .layer-door         { z-index: 20; }
@@ -48,14 +47,70 @@ body {
     pointer-events: none;
 }
 
-.office-container {
-    transition: transform 0.2s ease-out;
-    background-size: cover;
-    background-position: center;
+/* ===================================================================
+   OFICINA (se desplaza con el mouse, como en FNAF 1)
+   =================================================================== */
+#officeView { position: absolute; inset: 0; overflow: hidden; }
+
+#officeScene {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 125vw;           /* 25% más ancha que la pantalla */
+    will-change: transform;
 }
 
-/* Puertas visuales: nunca deben bloquear clics */
-.door-visual { pointer-events: none; }
+/* Puertas: bajan desde arriba. Nunca bloquean clics. */
+.door-visual {
+    position: absolute;
+    top: 0;
+    width: 11%;
+    height: 100%;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(0deg, #0c0c0c 0 22px, #2a2a2a 22px 26px),
+        #151515;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.9);
+    transform: translateY(-101%);
+    transition: transform 0.22s ease-in;
+}
+.door-visual.door-closed { transform: translateY(0); }
+#leftDoorVisual  { left: 0;  border-right: 4px solid #3a3a3a; }
+#rightDoorVisual { right: 0; border-left: 4px solid #3a3a3a; }
+
+/* Panel de botones en la pared (como en el original) */
+.wall-panel {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3.6rem;
+    padding: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    background: #1c1c1c;
+    border: 2px solid #0a0a0a;
+    box-shadow: inset 0 0 0 1px #3a3a3a, 0 4px 12px rgba(0, 0, 0, 0.8);
+}
+#leftPanel  { left: 12.5%; }
+#rightPanel { right: 12.5%; }
+
+.wall-btn {
+    height: 2.8rem;
+    background: #2e2e2e;
+    border: 2px solid #111;
+    color: #9a9a9a;
+    font-family: 'VT323', monospace;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px #4a4a4a;
+}
+.wall-btn:hover { background: #3a3a3a; }
+.wall-btn:active { transform: scale(0.95); }
+.wall-btn.door-btn.active  { background: #b91c1c; color: #fff; box-shadow: 0 0 10px rgba(255, 0, 0, 0.6); }
+.wall-btn.light-btn.active { background: #e5e7eb; color: #111; box-shadow: 0 0 10px rgba(255, 255, 255, 0.6); }
 
 /* Apagón */
 #blackoutOverlay {
@@ -65,34 +120,313 @@ body {
 }
 #blackoutOverlay.blackout-on { background: rgba(0, 0, 0, 0.95); }
 
-/* Zona de hover para abrir/cerrar el monitor (parte baja de la pantalla) */
+/* ===================================================================
+   HUD (estilo FNAF 1: solo texto blanco, sin cajas)
+   =================================================================== */
+.hud-text {
+    font-family: 'VT323', monospace;
+    color: #fff;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+}
+
+.hud-time {
+    position: absolute;
+    top: 1.2rem;
+    right: 1.8rem;
+    text-align: right;
+    line-height: 1;
+}
+.hud-time .clock { font-size: 3.4rem; letter-spacing: 0.06em; }
+.hud-time .night { font-size: 1.5rem; margin-top: 0.3rem; }
+
+.hud-power {
+    position: absolute;
+    left: 1.8rem;
+    bottom: 1.4rem;
+    font-size: 1.7rem;
+    line-height: 1.25;
+}
+.hud-power .pct { font-size: 2.2rem; }
+
+.usage-bars { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 0.5rem; }
+.usage-bar { width: 1.15rem; height: 1.5rem; background: #1d1d1d; }
+.usage-bar.on.b1, .usage-bar.on.b2 { background: #22c55e; }
+.usage-bar.on.b3 { background: #facc15; }
+.usage-bar.on.b4 { background: #f97316; }
+.usage-bar.on.b5 { background: #ef4444; }
+
+/* Barra para abrir el monitor (hover) */
 #monitorHoverZone {
     position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(28rem, 80%);
-    height: 3.5rem;
+    bottom: 0.9rem;
+    left: 34%;
+    width: 54%;
+    height: 2.9rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(17, 24, 39, 0.75);
-    border: 2px solid #4b5563;
-    border-bottom: none;
-    border-radius: 0.75rem 0.75rem 0 0;
-    color: #d1d5db;
-    letter-spacing: 0.2em;
-    font-size: 0.85rem;
-    font-weight: bold;
+    background: rgba(0, 0, 0, 0.45);
+    border: 3px solid rgba(190, 190, 190, 0.65);
+    border-radius: 6px;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
+    transition: border-color 0.15s, background 0.15s;
 }
-#monitorHoverZone:hover {
-    background: rgba(31, 41, 55, 0.95);
-    border-color: #4ade80;
+#monitorHoverZone:hover { border-color: #fff; background: rgba(40, 40, 40, 0.55); }
+#monitorHoverZone svg { width: 3.2rem; height: 1.6rem; transition: transform 0.2s; }
+#monitorHoverZone.open svg { transform: rotate(180deg); }
+
+/* ===================================================================
+   MONITOR DE CÁMARAS (blanco y negro, mínimo contenido)
+   =================================================================== */
+.cam-feed {
+    filter: grayscale(1) contrast(1.15) brightness(0.9);
+    animation: cam-flicker 3.2s infinite steps(1);
+}
+@keyframes cam-flicker {
+    0%, 100% { opacity: 1; }
+    7%  { opacity: 0.92; }
+    8%  { opacity: 1; }
+    52% { opacity: 0.95; }
+    53% { opacity: 1; }
+    90% { opacity: 0.9; }
+    91% { opacity: 1; }
 }
 
-/* Animación para el Jumpscare */
+.cam-sprite {
+    position: absolute;
+    object-fit: contain;
+    mix-blend-mode: screen; /* el fondo negro de los PNG se vuelve transparente */
+    filter: grayscale(0.9) contrast(1.15) brightness(0.95);
+}
+
+.rec-dot {
+    position: absolute;
+    top: 1.6rem;
+    left: 1.8rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    background: #dc2626;
+    animation: rec-blink 1.2s infinite steps(1);
+}
+@keyframes rec-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0; } }
+
+.cam-map {
+    position: absolute;
+    right: 1.8rem;
+    bottom: 5.4rem;
+    width: 200px;
+}
+.cam-name {
+    font-family: 'VT323', monospace;
+    font-size: 1.7rem;
+    line-height: 1;
+    color: #fff;
+    text-align: right;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 6px #000;
+}
+.cam-map-grid { position: relative; width: 200px; height: 176px; }
+
+.btn-cam, .cam-you {
+    position: absolute;
+    width: 56px;
+    height: 30px;
+    font-family: 'VT323', monospace;
+    font-size: 1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-cam {
+    background: #3f3f3f;
+    border: 2px solid #bdbdbd;
+    color: #fff;
+    cursor: pointer;
+}
+.btn-cam:hover { background: #5a5a5a; }
+.btn-cam.active { background: #2f9e2f; border-color: #a7f3a7; }
+.cam-you { border: 2px solid #8a8a8a; color: #8a8a8a; }
+
+.btn-cam[data-cam="6"] { left: 72px;  top: 0; }
+.btn-cam[data-cam="3"] { left: 6px;   top: 46px; }
+.btn-cam[data-cam="1"] { left: 72px;  top: 46px; }
+.btn-cam[data-cam="2"] { left: 6px;   top: 92px; }
+.btn-cam[data-cam="5"] { left: 138px; top: 92px; }
+.btn-cam[data-cam="4"] { left: 6px;   top: 138px; }
+.cam-you               { left: 72px;  top: 138px; }
+
+/* ===================================================================
+   MENÚ PRINCIPAL (estilo FNAF 1) - tamaños en vh para que nunca se desborde
+   =================================================================== */
+.menu-screen { background: #000; overflow: hidden; }
+
+.menu-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: #050505;
+    background-size: cover;
+    background-position: right center;
+    background-repeat: no-repeat;
+    filter: grayscale(0.85) contrast(1.25) brightness(0.55);
+    animation: menu-flicker 6s infinite steps(1);
+}
+
+@keyframes menu-flicker {
+    0%, 100% { opacity: 1; }
+    4%  { opacity: 0.55; }
+    6%  { opacity: 1; }
+    30% { opacity: 0.9; }
+    31% { opacity: 0.4; }
+    33% { opacity: 1; }
+    60% { opacity: 0.85; }
+    61% { opacity: 1; }
+    80% { opacity: 0.5; }
+    82% { opacity: 1; }
+}
+
+.menu-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.1) 100%),
+        radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%);
+}
+
+.menu-content {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 5vh 6vw 3.5vh;
+    box-sizing: border-box;
+}
+
+.menu-title {
+    font-family: 'VT323', monospace;
+    font-size: clamp(2rem, 10vh, 5rem);
+    line-height: 0.95;
+    color: #f3f4f6;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 12px rgba(0, 0, 0, 0.9);
+    margin: 0;
+}
+
+.menu-options { margin-top: 5vh; list-style: none; padding: 0; }
+.menu-options li { margin-bottom: 1.2vh; }
+
+.menu-option {
+    font-family: 'VT323', monospace;
+    font-size: clamp(1.4rem, 5.2vh, 2.4rem);
+    line-height: 1.1;
+    color: #d1d5db;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+.menu-option:hover, .menu-option:focus-visible { color: #fff; outline: none; }
+
+.menu-arrow { display: inline-block; width: 2.2em; visibility: hidden; }
+.menu-option:hover .menu-arrow,
+.menu-option:focus-visible .menu-arrow { visibility: visible; }
+
+.menu-sub {
+    font-family: 'VT323', monospace;
+    font-size: clamp(0.9rem, 3vh, 1.2rem);
+    color: #9ca3af;
+    margin-left: 2.2em;
+}
+
+.menu-link {
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-family: inherit;
+    font-size: inherit;
+}
+.menu-link:hover { color: #e5e7eb; }
+
+/* ===================================================================
+   CUSTOM NIGHT (réplica del original: negro, texto blanco, imágenes cuadradas)
+   =================================================================== */
+#customNightMenu {
+    background: #000;
+    font-family: 'VT323', monospace;
+    color: #fff;
+    overflow: hidden;
+}
+.cn-title { font-size: clamp(2rem, 7vh, 3.2rem); letter-spacing: 0.05em; }
+.cn-row { display: flex; gap: clamp(1.2rem, 4vw, 3.5rem); justify-content: center; }
+.cn-col { display: flex; flex-direction: column; align-items: center; }
+.cn-name { font-size: clamp(1.6rem, 5vh, 2.4rem); margin-bottom: 0.5rem; }
+.cn-portrait {
+    width: clamp(7rem, 20vh, 11rem);
+    height: clamp(7rem, 20vh, 11rem);
+    object-fit: cover;
+    display: block;
+    background: #000;
+}
+.cn-label { font-size: clamp(1.3rem, 4vh, 1.9rem); margin-top: 1.4vh; }
+.cn-controls { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.6vh; }
+.cn-level { font-size: clamp(2.4rem, 8vh, 3.6rem); min-width: 2.2ch; text-align: center; line-height: 1; }
+.cn-btn {
+    width: 1.6rem;
+    height: 2.2rem;
+    background: #4a4a4a;
+    border: none;
+    color: #fff;
+    font-family: 'VT323', monospace;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.cn-btn:hover { background: #666; }
+.cn-footer {
+    position: absolute;
+    left: 5vw;
+    right: 5vw;
+    bottom: 5vh;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+.cn-legend { font-size: clamp(1rem, 3vh, 1.5rem); }
+.cn-ready {
+    background: #4a4a4a;
+    color: #fff;
+    border: none;
+    padding: 0.2rem 1rem;
+    font-family: 'VT323', monospace;
+    font-size: clamp(1.8rem, 6vh, 2.8rem);
+    cursor: pointer;
+}
+.cn-ready:hover { background: #666; }
+.cn-back {
+    position: absolute;
+    top: 3vh;
+    left: 3vw;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-family: 'VT323', monospace;
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+.cn-back:hover { color: #fff; }
+
+/* ===================================================================
+   JUMPSCARE
+   =================================================================== */
 @keyframes jumpscare-shake {
     0% { transform: scale(1.1) translate(0, 0) rotate(0deg); }
     10% { transform: scale(1.4) translate(-25px, 20px) rotate(-6deg); }
@@ -106,30 +440,38 @@ body {
     90% { transform: scale(1.5) translate(-15px, 15px) rotate(-3deg); }
     100% { transform: scale(1.45) translate(0, 0) rotate(0deg); }
 }
-
 .screamer-active { animation: jumpscare-shake 0.06s infinite alternate; }
 
 @keyframes red-alarm {
     0%, 100% { background-color: rgba(255, 0, 0, 0.45); }
     50% { background-color: rgba(40, 0, 0, 0.85); }
 }
-
 .alarm-active { animation: red-alarm 0.35s infinite; }
 
-/* Posiciones de animatrónicos en cámaras */
-.pos-cam1-freddy { top: 25%; left: 42%; height: 55%; }
-.pos-cam1-bonnie { top: 28%; left: 18%; height: 50%; }
-.pos-cam1-chica  { top: 28%; right: 18%; height: 50%; }
+/* ===================================================================
+   POSICIONES DE ANIMATRÓNICOS EN CÁMARAS
+   Se aplican dos clases: .pos-<nombre> (por defecto) y .pos-cam<N>-<nombre> (ajuste por cámara)
+   =================================================================== */
+.pos-bonnie { top: 26%; left: 16%; height: 56%; }
+.pos-freddy { top: 24%; left: 40%; height: 58%; }
+.pos-chica  { top: 26%; right: 16%; height: 56%; }
+.pos-foxy   { top: 28%; left: 42%; height: 54%; }
 
-.pos-cam2-chica  { top: 30%; left: 25%; height: 55%; }
-.pos-cam2-freddy { top: 28%; right: 25%; height: 55%; }
+/* CAM 4 - Pasillo (se ven más lejos) */
+.pos-cam4-bonnie { top: 34%; left: 40%; height: 44%; }
+.pos-cam4-foxy   { top: 30%; left: 38%; height: 52%; }
 
-.pos-cam3-bonnie { top: 22%; left: 35%; height: 60%; }
-.pos-cam3-foxy   { top: 25%; left: 15%; height: 55%; }
+/* CAM 3 - Sillas del fondo (Alan asoma, luego sale) */
+.pos-cam3-foxy-s1 { top: 30%; left: 62%; height: 50%; opacity: 0.75; }
+.pos-cam3-foxy-s2 { top: 26%; left: 40%; height: 58%; }
 
-.pos-cam4-foxy   { top: 30%; left: 40%; height: 50%; }
-.pos-cam4-freddy { top: 25%; right: 20%; height: 50%; }
+/* CAM 5 - Computador del profesor */
+.pos-cam5-chica  { top: 28%; left: 52%; right: auto; height: 52%; }
+.pos-cam5-freddy { top: 26%; left: 24%; height: 54%; }
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #0a0a0f; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+/* Animatrónicos en los pasillos de la oficina: el fondo negro de los PNG se vuelve transparente */
+.door-sprite { mix-blend-mode: screen; }
