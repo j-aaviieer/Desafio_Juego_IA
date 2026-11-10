@@ -60,7 +60,7 @@ const SECONDS_PER_HOUR = 89;     // Cada hora dura 89s en el original (noche ≈
 const POWER_PER_USAGE = 1 / 9.6; // % por segundo por cada nivel de uso
 const MONITOR_COOLDOWN_MS = 600;
 const INTRO_MS = 3500;
-const FOXY_RUN_MS = 6000;        // Tiempo que tarda Alan en correr por el pasillo
+const FOXY_RUN_SECONDS = 6;        // Tiempo que tarda Alan en correr por el pasillo
 const MAX_NIGHT = 6;
 const SAVE_KEY = 'fnafvc_night';
 
@@ -96,6 +96,47 @@ const DOOR_OF = { bonnie: 'left_door', chica: 'right_door', freddy: 'right_door'
 
 const ORDINALS = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
 const ANIM_KEYS = ['freddy', 'bonnie', 'chica', 'foxy'];
+const STARS_KEY = 'fnafvc_stars';
+
+// Llamadas del profesor al empezar cada noche (subtítulos + voz del navegador)
+const CALLS = {
+    1: [
+        'Hola, hola... ¿me escuchas? Soy el profesor. Bienvenido a tu primer turno nocturno en la clase de programación.',
+        'Seguro ya conoces a Ariel, Vicente, Fernando y Alan. Son muy cariñosos... pero se ponen un poco agresivos si nadie los mira.',
+        'Así que revisa las cámaras con frecuencia. Si alguno llega a tu puerta, ciérrala. Pero ojo con la energía: todo lo que uses la gasta.',
+        'Y si te quedas sin energía, Ariel tocará su melodía... y no será una melodía de aprobación.',
+        'Bueno, es solo una noche. ¡Mucha suerte, y no copies código sin entenderlo!'
+    ],
+    2: [
+        'Hola otra vez. Veo que sobreviviste. ¡Eso es una nota excelente!',
+        'Esta noche Vicente anda más inquieto. Le gusta pasar por los computadores y por el pasillo. Mantén la puerta izquierda a mano.',
+        'Ah, y no olvides revisar a Alan en las sillas del fondo. Si no lo miras... bueno, corre bastante rápido.',
+        'Ánimo, que ya casi es el fin del trimestre.'
+    ],
+    3: [
+        'Buenas noches. Hoy hay evaluación sorpresa, y los alumnos están nerviosos.',
+        'Fernando se mueve mucho por la salida y por el computador del profesor. Ese es el camino hacia tu puerta derecha.',
+        'Si ves que algo se acerca, cierra la puerta. Pero no la dejes cerrada todo el rato, ¿eh? La energía no es infinita.',
+        'Hasta luego.'
+    ],
+    4: [
+        'Te llamo rápido porque hoy hay mucho trabajo. Alan está especialmente activo.',
+        'Mira la cámara 3 de vez en cuando. Mientras la veas, él no se mueve. Pero si sale por el pasillo, solo tendrás unos segundos.',
+        'Cada golpe en la puerta gasta más energía que el anterior, así que no lo subestimes.',
+        'Ya casi lo logras. Buena suerte.'
+    ],
+    5: [
+        'Quinta noche. Aquí la cosa se pone seria.',
+        'Ariel se vuelve más paciente, y eso no es buena señal. No se mueve mientras lo miras, pero sigue avanzando cuando no.',
+        'Si todo sale bien, mañana tendrás tu último reto. Si no... nos vemos en recuperación.'
+    ],
+    6: [
+        'Última noche. Tengo que reconocer que estoy impresionado.',
+        'Hoy todos están en su mejor forma. Vicente y Fernando no pararán de intentar entrar por sus puertas.',
+        'Cuida la energía, cierra solo lo necesario y mira las cámaras con calma. Tú puedes.',
+        'Cuando amanezca, habrás aprobado el curso. ¡Éxito!'
+    ]
+};
 
 // ===================================================================
 // AUDIO SINTÉTICO (Web Audio API)
@@ -131,6 +172,76 @@ class SoundEngine {
     playDoorKnock() { this.playTone(80, 'square', 0.35, 0.3); }
     playLight()     { this.playTone(650, 'sine', 0.08, 0.08); }
     playMonitor()   { this.playTone(340, 'triangle', 0.15, 0.1); }
+    playGlitch()    { this.playTone(1800, 'sawtooth', 0.08, 0.04); }
+    playHonk()      { this.playTone(330, 'square', 0.12, 0.15); setTimeout(() => this.playTone(392, 'square', 0.18, 0.15), 120); }
+    playBell()      { [880, 1108, 1318].forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 1.2, 0.15), i * 250)); }
+    playFootsteps() { [0, 280, 560].forEach(t => setTimeout(() => this.playTone(70, 'sine', 0.18, 0.28), t)); }
+    playRun()       { for (let i = 0; i < 8; i++) setTimeout(() => this.playTone(60 + (i % 2) * 15, 'square', 0.12, 0.2), i * 110); }
+
+    makeNoiseBuffer(seconds = 2) {
+        const len = Math.floor(this.ctx.sampleRate * seconds);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        return buf;
+    }
+
+    // Ventilador/zumbido de la oficina + estática de cámaras (silenciosa hasta abrir el monitor)
+    startAmbience() {
+        if (!this.ctx || this.amb) return;
+        try {
+            const c = this.ctx;
+            const noise = this.makeNoiseBuffer(2);
+
+            const fan = c.createBufferSource(); fan.buffer = noise; fan.loop = true;
+            const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
+            const fanGain = c.createGain(); fanGain.gain.value = 0.06;
+            fan.connect(lp); lp.connect(fanGain); fanGain.connect(c.destination);
+
+            const hum = c.createOscillator(); hum.type = 'sine'; hum.frequency.value = 55;
+            const humGain = c.createGain(); humGain.gain.value = 0.025;
+            hum.connect(humGain); humGain.connect(c.destination);
+
+            const stat = c.createBufferSource(); stat.buffer = noise; stat.loop = true;
+            const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 0.6;
+            const statGain = c.createGain(); statGain.gain.value = 0;
+            stat.connect(bp); bp.connect(statGain); statGain.connect(c.destination);
+
+            fan.start(); hum.start(); stat.start();
+            this.amb = { nodes: [fan, hum, stat], statGain };
+        } catch (e) {}
+    }
+
+    stopAmbience() {
+        if (!this.amb) return;
+        this.amb.nodes.forEach(n => { try { n.stop(); } catch (e) {} });
+        this.amb = null;
+    }
+
+    setCamStatic(on) {
+        if (this.amb) this.amb.statGain.gain.setTargetAtTime(on ? 0.035 : 0, this.ctx.currentTime, 0.05);
+    }
+
+    // Caja de música del apagón (melodía propia, en menor)
+    startMusicBox() {
+        if (!this.ctx) return;
+        this.stopMusicBox();
+        const notes = [523, 494, 392, 330, 392, 311, 262, 311, 262, 247];
+        let i = 0;
+        const play = () => {
+            const f = notes[i % notes.length];
+            this.playTone(f, 'triangle', 0.7, 0.14);
+            this.playTone(f * 2, 'sine', 0.5, 0.04);
+            i++;
+        };
+        play();
+        this.musicTimer = setInterval(play, 420);
+    }
+
+    stopMusicBox() {
+        clearInterval(this.musicTimer);
+        this.musicTimer = null;
+    }
 
     playJumpscareSound() {
         if (!this.ctx) return;
@@ -255,10 +366,86 @@ function setImg(imgElement, key, anims = []) {
 }
 
 // ===================================================================
+// SPRITES: los PNG de los animatrónicos tienen fondo NEGRO (no transparente).
+// Se recorta el negro conectado a los bordes para que no se vean rectángulos
+// ni se vean transparentes. Si el navegador bloquea leer píxeles (abrir con
+// file://), se usa la imagen tal cual. Con Live Server funciona.
+// ===================================================================
+const spriteCache = {}; // clave -> url lista para usar
+
+function buildCutout(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const w = img.naturalWidth, h = img.naturalHeight;
+                const c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                const ctx = c.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(img, 0, 0);
+                const imgData = ctx.getImageData(0, 0, w, h); // lanza error si el canvas está "tainted"
+                const d = imgData.data;
+
+                // Si ya trae transparencia en las esquinas, no hay nada que recortar
+                if (d[3] < 10 || d[(w - 1) * 4 + 3] < 10) { resolve(url); return; }
+
+                const THRESH = 45;
+                const isBg = (p) => d[p] < THRESH && d[p + 1] < THRESH && d[p + 2] < THRESH;
+                const seen = new Uint8Array(w * h);
+                const stack = [];
+                const push = (x, y) => {
+                    const i = y * w + x;
+                    if (!seen[i] && isBg(i * 4)) { seen[i] = 1; stack.push(i); }
+                };
+                for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+                for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+                while (stack.length) {
+                    const i = stack.pop();
+                    const x = i % w, y = (i - x) / w;
+                    d[i * 4 + 3] = 0;
+                    if (x > 0) push(x - 1, y);
+                    if (x < w - 1) push(x + 1, y);
+                    if (y > 0) push(x, y - 1);
+                    if (y < h - 1) push(x, y + 1);
+                }
+                ctx.putImageData(imgData, 0, 0);
+                resolve(c.toDataURL('image/png'));
+            } catch (e) { resolve(null); }
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+}
+
+function refreshSprite(key) {
+    const url = getAssetUrl(key);
+    buildCutout(url).then(res => {
+        if (getAssetUrl(key) !== url) return; // cambió mientras cargaba
+        spriteCache[key] = res || url;
+        refreshSpritesUI();
+    });
+}
+
+function preloadSprites() { ANIM_KEYS.forEach(refreshSprite); }
+
+function refreshSpritesUI() {
+    if (DOM.gameContainer.classList.contains('hidden')) return;
+    updateOfficeUI();
+    if (state.isMonitorOpen) updateCameraMonitorUI();
+}
+
+function setSprite(img, key) {
+    img.onerror = () => { img.onerror = null; img.src = createDynamicFallbackUrl(key, []); };
+    const url = spriteCache[key] || getAssetUrl(key);
+    if (img.getAttribute('src') !== url) img.src = url;
+}
+
+// ===================================================================
 // ESTADO GLOBAL
 // ===================================================================
 const state = {
     isPlaying: false,
+    paused: false,
     jumpscared: false,
     power: 100,
     hour: 0,
@@ -272,6 +459,8 @@ const state = {
     isCustom: false,
     foxyStage: 0,   // 0: escondido · 1: asoma · 2: sale · 3: corriendo por el pasillo
     foxyHits: 0,    // golpes a la puerta (cada golpe drena más energía)
+    foxyRunLeft: 0, // segundos que le quedan a Alan para llegar a tu puerta
+    camSwitches: 0, // cámaras revisadas en la noche
     aiLevels: { bonnie: 0, chica: 0, freddy: 0, foxy: 0 },
     animatronics: {
         freddy: { location: 6 },
@@ -286,7 +475,9 @@ let aiTimer = null;
 let outageTimer = null;
 let jumpscareTimer = null;
 let introTimer = null;
-let foxyRunTimer = null;
+let outageFlickerTimer = null;
+let callToken = 0;
+let callMuted = false;
 let gameSeconds = 0;
 let lastConfig = { night: 1, custom: false };
 const customLevels = { freddy: 0, bonnie: 0, chica: 0, foxy: 0 };
@@ -319,6 +510,17 @@ const DOM = {
     introNight: $('introNight'),
     menuBackdrop: $('menuBackdrop'),
     officeScene: $('officeScene'),
+    btnMinigames: $('btnMinigames'),
+    menuStars: $('menuStars'),
+    pauseMenu: $('pauseMenu'),
+    btnResume: $('btnResume'),
+    btnPauseMenu: $('btnPauseMenu'),
+    callSubtitle: $('callSubtitle'),
+    btnMuteCall: $('btnMuteCall'),
+    camGlitch: $('camGlitch'),
+    outageFace: $('outageFace'),
+    victoryTime: $('victoryTime'),
+    victorySummary: $('victorySummary'),
 
     btnNewGame: $('btnNewGame'),
     btnContinue: $('btnContinue'),
@@ -399,6 +601,7 @@ function setupAssetManager() {
                 CUSTOM_ASSETS[key] = URL.createObjectURL(file);
                 markAssetLoaded(key);
                 if (key === 'fondoFnaf') loadMenuBackdrop();
+                if (ANIM_KEYS.includes(key)) refreshSprite(key);
                 updateAssetSummary();
             }
         });
@@ -419,6 +622,7 @@ function setupAssetManager() {
         });
         updateAssetSummary();
         loadMenuBackdrop();
+        ANIM_KEYS.forEach(refreshSprite);
     });
 }
 
@@ -434,7 +638,7 @@ function updateAssetSummary() {
 // PUERTAS Y LUCES
 // ===================================================================
 function canInteract() {
-    return state.isPlaying && state.power > 0;
+    return state.isPlaying && !state.paused && state.power > 0;
 }
 
 function toggleLeftDoor() {
@@ -497,6 +701,25 @@ function initApp() {
     setupCustomNight();
     loadMenuBackdrop();
     renderContinue();
+    renderStars();
+    preloadSprites();
+    setupPause();
+    setupKeys();
+
+    Minigames.init({
+        onExit: () => DOM.mainMenu.classList.remove('hidden')
+    });
+    DOM.btnMinigames.addEventListener('click', () => {
+        sound.init(); sound.playClick();
+        DOM.mainMenu.classList.add('hidden');
+        Minigames.openHub();
+    });
+
+    DOM.btnMuteCall.addEventListener('click', () => {
+        callMuted = !callMuted;
+        DOM.btnMuteCall.innerText = callMuted ? 'Activar voz' : 'Silenciar llamada';
+        if (callMuted) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    });
 
     DOM.btnNewGame.addEventListener('click', () => {
         sound.init(); sound.playClick();
@@ -582,17 +805,24 @@ function clearAllTimers() {
     clearTimeout(outageTimer);
     clearTimeout(jumpscareTimer);
     clearTimeout(introTimer);
-    clearTimeout(foxyRunTimer);
+    clearInterval(outageFlickerTimer);
+    sound.stopMusicBox();
+    sound.stopAmbience();
+    stopCall();
 }
 
 function goToMainMenu() {
     clearAllTimers();
     state.isPlaying = false;
+    state.paused = false;
+    DOM.pauseMenu.classList.add('hidden');
+    DOM.outageFace.classList.add('hidden');
     DOM.nightIntro.classList.add('hidden');
     DOM.gameContainer.classList.add('hidden');
     DOM.customNightMenu.classList.add('hidden');
     DOM.mainMenu.classList.remove('hidden');
     renderContinue();
+    renderStars();
 }
 
 function setupCustomNight() {
@@ -659,7 +889,7 @@ function setupMonitorHover() {
 }
 
 function tryToggleMonitor(ignoreArmed) {
-    if (!state.isPlaying || state.power <= 0) return;
+    if (!state.isPlaying || state.paused || state.power <= 0) return;
     if (!ignoreArmed && !monitorArmed) return;
 
     const now = performance.now();
@@ -676,13 +906,22 @@ function toggleMonitor() {
     state.isMonitorOpen = !state.isMonitorOpen;
     DOM.cameraMonitor.classList.toggle('hidden', !state.isMonitorOpen);
     DOM.monitorHoverZone.classList.toggle('open', state.isMonitorOpen);
-    if (state.isMonitorOpen) updateCameraMonitorUI();
+    sound.setCamStatic(state.isMonitorOpen);
+    if (state.isMonitorOpen) { triggerGlitch(); updateCameraMonitorUI(); }
+}
+
+function triggerGlitch() {
+    DOM.camGlitch.classList.remove('run');
+    void DOM.camGlitch.offsetWidth; // reinicia la animación
+    DOM.camGlitch.classList.add('run');
+    sound.playGlitch();
 }
 
 function closeMonitorSilently() {
     state.isMonitorOpen = false;
     DOM.cameraMonitor.classList.add('hidden');
     DOM.monitorHoverZone.classList.remove('open');
+    sound.setCamStatic(false);
 }
 
 // ===================================================================
@@ -708,6 +947,9 @@ function startNight(config) {
     state.rightLight = false;
     state.foxyStage = 0;
     state.foxyHits = 0;
+    state.foxyRunLeft = 0;
+    state.camSwitches = 0;
+    state.paused = false;
 
     // Todos empiezan en el pizarrón (CAM 6); Alan, escondido en las sillas del fondo
     state.animatronics.freddy.location = 6;
@@ -728,6 +970,9 @@ function startNight(config) {
     DOM.victoryMenu.classList.add('hidden');
     DOM.blackoutOverlay.classList.remove('blackout-on');
     DOM.monitorHoverZone.classList.remove('hidden');
+    DOM.outageFace.classList.add('hidden');
+    DOM.pauseMenu.classList.add('hidden');
+    DOM.gameContainer.classList.remove('low-power');
 
     DOM.clockDisplay.innerText = '12 AM';
     DOM.powerPercent.innerText = '100%';
@@ -752,6 +997,8 @@ function beginNight() {
     gameSeconds = 0;
     gameTimer = setInterval(gameLoopTick, 1000);
     aiTimer = setInterval(animatronicAITick, AI_TICK_MS);
+    sound.startAmbience();
+    if (!state.isCustom) playCall(state.nightNum);
 }
 
 function applyHourBoosts(hour) {
@@ -777,7 +1024,7 @@ function updateUsageBars(usage) {
 }
 
 function gameLoopTick() {
-    if (!state.isPlaying) return;
+    if (!state.isPlaying || state.paused) return;
 
     const usage = getUsage();
     state.power -= usage * POWER_PER_USAGE;
@@ -790,6 +1037,14 @@ function gameLoopTick() {
 
     DOM.powerPercent.innerText = `${Math.ceil(state.power)}%`;
     updateUsageBars(usage);
+    DOM.gameContainer.classList.toggle('low-power', state.power <= 20);
+
+    // Alan corriendo por el pasillo: cuenta atrás hasta tu puerta
+    if (state.foxyStage === 3) {
+        state.foxyRunLeft--;
+        if (state.foxyRunLeft <= 0) foxyAttack();
+        if (!state.isPlaying) return;
+    }
 
     // Avance del reloj
     gameSeconds++;
@@ -813,7 +1068,7 @@ function rollsUnder(level) {
 }
 
 function animatronicAITick() {
-    if (!state.isPlaying) return;
+    if (!state.isPlaying || state.paused) return;
 
     ['bonnie', 'chica', 'freddy'].forEach(name => {
         if (state.isPlaying && rollsUnder(state.aiLevels[name])) moveAnimatronic(name);
@@ -851,6 +1106,7 @@ function moveAnimatronic(name) {
     const options = ROUTES[name][a.location];
     if (!options) return;
     a.location = options[Math.floor(Math.random() * options.length)];
+    if (a.location === doorKey) sound.playFootsteps(); // se oyen pasos al llegar a tu puerta
 }
 
 function moveFoxy() {
@@ -858,9 +1114,8 @@ function moveFoxy() {
     state.foxyStage++;
     if (state.foxyStage === 3) {
         // Alan sale corriendo por el pasillo (se ve en CAM 4)
-        sound.playTone(90, 'sawtooth', 0.5, 0.2);
-        clearTimeout(foxyRunTimer);
-        foxyRunTimer = setTimeout(foxyAttack, FOXY_RUN_MS);
+        state.foxyRunLeft = FOXY_RUN_SECONDS;
+        sound.playRun();
     }
 }
 
@@ -906,7 +1161,7 @@ function updateOfficeUI() {
     // Luz pasillo izquierdo (solo se ve a Vicente en la puerta)
     DOM.leftLightOverlay.classList.toggle('hidden', !state.leftLight);
     if (state.leftLight && state.animatronics.bonnie.location === 'left_door') {
-        setImg(DOM.leftDoorAnimatronic, 'bonnie');
+        setSprite(DOM.leftDoorAnimatronic, 'bonnie');
         DOM.leftDoorAnimatronic.classList.remove('hidden');
     } else {
         DOM.leftDoorAnimatronic.classList.add('hidden');
@@ -915,10 +1170,10 @@ function updateOfficeUI() {
     // Luz pasillo derecho (Fernando o Ariel)
     DOM.rightLightOverlay.classList.toggle('hidden', !state.rightLight);
     if (state.rightLight && state.animatronics.chica.location === 'right_door') {
-        setImg(DOM.rightDoorAnimatronic, 'chica');
+        setSprite(DOM.rightDoorAnimatronic, 'chica');
         DOM.rightDoorAnimatronic.classList.remove('hidden');
     } else if (state.rightLight && state.animatronics.freddy.location === 'right_door') {
-        setImg(DOM.rightDoorAnimatronic, 'freddy');
+        setSprite(DOM.rightDoorAnimatronic, 'freddy');
         DOM.rightDoorAnimatronic.classList.remove('hidden');
     } else {
         DOM.rightDoorAnimatronic.classList.add('hidden');
@@ -929,7 +1184,9 @@ function updateOfficeUI() {
 // INTERFAZ DE CÁMARAS
 // ===================================================================
 function switchCamera(camId) {
+    if (camId !== state.currentCam) state.camSwitches++;
     state.currentCam = camId;
+    triggerGlitch();
     updateCameraMonitorUI();
 }
 
@@ -950,7 +1207,7 @@ function updateCameraMonitorUI() {
 function renderAnimatronicInCamera(name, camId) {
     const img = DOM.camSprites[name];
     if (getAnimCam(name) === camId) {
-        setImg(img, name);
+        setSprite(img, name);
         let cls = `cam-sprite pos-${name} pos-cam${camId}-${name}`;
         if (name === 'foxy' && camId === 3) cls += ` pos-cam3-foxy-s${state.foxyStage}`;
         img.className = cls;
@@ -965,19 +1222,30 @@ function renderAnimatronicInCamera(name, camId) {
 function handlePowerOutage() {
     state.isPlaying = false;
     clearInterval(aiTimer);
-    clearTimeout(foxyRunTimer);
     state.leftDoor = false;
     state.rightDoor = false;
     state.leftLight = false;
     state.rightLight = false;
 
+    stopCall();
     closeMonitorSilently();
     DOM.monitorHoverZone.classList.add('hidden');
+    DOM.gameContainer.classList.remove('low-power');
     DOM.blackoutOverlay.classList.add('blackout-on');
     updateOfficeUI();
     updateUsageBars(0);
 
-    outageTimer = setTimeout(() => triggerJumpscare('freddy'), 3000);
+    // Se apaga todo: suena la caja de música y Ariel aparece parpadeando en la oscuridad
+    sound.stopAmbience();
+    sound.startMusicBox();
+    setSprite(DOM.outageFace, 'freddy');
+    let ticks = 0;
+    outageFlickerTimer = setInterval(() => {
+        ticks++;
+        DOM.outageFace.classList.toggle('hidden', !(ticks > 5 && Math.random() > 0.4));
+    }, 320);
+
+    outageTimer = setTimeout(() => triggerJumpscare('freddy'), 6000);
 }
 
 function triggerJumpscare(characterKey) {
@@ -987,6 +1255,8 @@ function triggerJumpscare(characterKey) {
 
     clearAllTimers();
     closeMonitorSilently();
+    DOM.outageFace.classList.add('hidden');
+    DOM.gameContainer.classList.remove('low-power');
     sound.playJumpscareSound();
 
     // Usa la imagen de screamer; si no existe, la imagen normal
@@ -1007,13 +1277,154 @@ function triggerVictory() {
     state.isPlaying = false;
     clearAllTimers();
     closeMonitorSilently();
-    sound.playTone(523, 'sine', 0.6, 0.2);
+    DOM.gameContainer.classList.remove('low-power');
 
-    // Guardar progreso (solo noches normales)
+    // Progreso y estrellas
+    let newStar = false;
+    if (!state.isCustom) {
+        saveNight(Math.min(state.nightNum + 1, MAX_NIGHT));
+        if (state.nightNum === 5) newStar = addStar('n5');
+        if (state.nightNum === 6) newStar = addStar('n6');
+    } else if (ANIM_KEYS.every(a => state.aiLevels[a] === 20)) {
+        newStar = addStar('c20');
+    }
+    renderStars();
+
     const canContinue = !state.isCustom && state.nightNum < MAX_NIGHT;
-    if (!state.isCustom) saveNight(Math.min(state.nightNum + 1, MAX_NIGHT));
     DOM.btnNextNight.classList.toggle('hidden', !canContinue);
+    DOM.victorySummary.innerText =
+        `Energía restante: ${Math.ceil(state.power)}% · Cámaras revisadas: ${state.camSwitches}` +
+        (newStar ? ' · ★ ¡Nueva estrella!' : '');
+
+    // 5 AM → 6 AM con campanas, como en el original
+    DOM.victoryTime.innerText = '5:00 AM';
     DOM.victoryMenu.classList.remove('hidden');
+    sound.playTone(523, 'sine', 0.6, 0.2);
+    setTimeout(() => {
+        DOM.victoryTime.innerText = '6:00 AM';
+        sound.playBell();
+    }, 1400);
+}
+
+// ===================================================================
+// ESTRELLAS
+// ===================================================================
+function loadStars() {
+    try { return JSON.parse(localStorage.getItem(STARS_KEY)) || {}; } catch (e) { return {}; }
+}
+
+// Devuelve true si es una estrella nueva
+function addStar(id) {
+    const stars = loadStars();
+    if (stars[id]) return false;
+    stars[id] = true;
+    try { localStorage.setItem(STARS_KEY, JSON.stringify(stars)); } catch (e) {}
+    return true;
+}
+
+function renderStars() {
+    const stars = loadStars();
+    const n = ['n5', 'n6', 'c20'].filter(k => stars[k]).length;
+    DOM.menuStars.innerText = '★'.repeat(n) + '☆'.repeat(3 - n);
+}
+
+// ===================================================================
+// LLAMADA DEL PROFESOR (subtítulos + voz del navegador)
+// ===================================================================
+function stopCall() {
+    callToken++;
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+    if (DOM.callSubtitle) DOM.callSubtitle.classList.add('hidden');
+    if (DOM.btnMuteCall) DOM.btnMuteCall.classList.add('hidden');
+}
+
+function playCall(night) {
+    const lines = CALLS[night];
+    if (!lines) return;
+    const token = ++callToken;
+    DOM.btnMuteCall.classList.remove('hidden');
+    let i = 0;
+
+    const next = () => {
+        if (token !== callToken) return;
+        if (i >= lines.length) {
+            DOM.callSubtitle.classList.add('hidden');
+            DOM.btnMuteCall.classList.add('hidden');
+            return;
+        }
+        const line = lines[i++];
+        DOM.callSubtitle.innerText = line;
+        DOM.callSubtitle.classList.remove('hidden');
+
+        let advanced = false;
+        const advance = () => {
+            if (advanced || token !== callToken) return;
+            advanced = true;
+            setTimeout(next, 350);
+        };
+        const wait = Math.max(2200, line.length * 62);
+
+        if (!callMuted && 'speechSynthesis' in window) {
+            try {
+                const u = new SpeechSynthesisUtterance(line);
+                u.lang = 'es-ES';
+                const voice = speechSynthesis.getVoices().find(v => v.lang.toLowerCase().startsWith('es'));
+                if (voice) u.voice = voice;
+                u.rate = 0.95;
+                u.onend = advance;
+                u.onerror = advance;
+                speechSynthesis.speak(u);
+                setTimeout(advance, wait + 5000); // respaldo por si la voz no avisa
+                return;
+            } catch (e) {}
+        }
+        setTimeout(advance, wait);
+    };
+    next();
+}
+
+// ===================================================================
+// PAUSA Y TECLAS
+// ===================================================================
+function setPaused(p) {
+    if (p && (!state.isPlaying || state.paused)) return;
+    state.paused = p;
+    DOM.pauseMenu.classList.toggle('hidden', !p);
+    try {
+        if (window.speechSynthesis) p ? speechSynthesis.pause() : speechSynthesis.resume();
+        if (sound.ctx) p ? sound.ctx.suspend() : sound.ctx.resume();
+    } catch (e) {}
+}
+
+function setupPause() {
+    DOM.btnResume.addEventListener('click', () => setPaused(false));
+    DOM.btnPauseMenu.addEventListener('click', () => {
+        setPaused(false);
+        goToMainMenu();
+    });
+    // Si cambias de pestaña, se pausa solo
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && state.isPlaying) setPaused(true);
+    });
+}
+
+function setupKeys() {
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (state.paused) setPaused(false);
+            else if (state.isPlaying) setPaused(true);
+            return;
+        }
+        if (!state.isPlaying || state.paused) return;
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (document.activeElement) document.activeElement.blur();
+            tryToggleMonitor(true);
+        } else if (e.key.toLowerCase() === 'h') {
+            sound.init();
+            sound.playHonk();
+        }
+    });
 }
 
 // ===================================================================

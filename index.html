@@ -27,6 +27,7 @@
         <div class="menu-content">
             <div>
                 <h1 class="menu-title">5 clases<br>en<br>programación</h1>
+                <div id="menuStars" class="menu-stars" title="Estrellas: Night 5, Night 6 y Custom 20/20/20/20">☆☆☆</div>
 
                 <ul class="menu-options">
                     <li>
@@ -39,12 +40,15 @@
                     <li>
                         <button id="btnCustomNight" class="menu-option"><span class="menu-arrow">&gt;&gt;</span>Custom Night</button>
                     </li>
+                    <li>
+                        <button id="btnMinigames" class="menu-option"><span class="menu-arrow">&gt;&gt;</span>Mini-games</button>
+                    </li>
                 </ul>
             </div>
 
             <div class="flex justify-between items-end text-xs text-gray-500">
                 <div class="flex items-center gap-4">
-                    <span>v1.4</span>
+                    <span>v1.5</span>
                     <button id="btnOpenAssetManager" class="menu-link">Imágenes</button>
                     <button id="btnControlsModal" class="menu-link">Cómo jugar</button>
                 </div>
@@ -114,6 +118,32 @@
         <div id="introNight" class="font-vt323 text-5xl text-white tracking-widest mt-4">1st Night</div>
     </div>
 
+    <!-- ==================== MINI-JUEGOS ==================== -->
+    <div id="minigameScreen" class="hidden absolute inset-0 z-30 bg-black flex flex-col items-center justify-center">
+        <div id="mgHub" class="mg-hub">
+            <h2 class="mg-title">MINI-JUEGOS</h2>
+            <p class="mg-sub">Un descanso entre noches · tus récords se guardan en este navegador</p>
+            <div id="mgList" class="mg-list"></div>
+            <button id="mgBack" class="mg-btn">&lt; Volver al menú</button>
+        </div>
+        <div id="mgPlay" class="hidden mg-play">
+            <div class="mg-bar">
+                <span id="mgTitle">Bug Runner</span>
+                <span id="mgScore">Puntos: 0</span>
+                <button id="mgExit" class="mg-btn mg-btn-small">Salir</button>
+            </div>
+            <div id="mgStage" class="mg-stage"></div>
+            <div id="mgHint" class="mg-hint"></div>
+        </div>
+    </div>
+
+    <!-- ==================== PAUSA ==================== -->
+    <div id="pauseMenu" class="hidden absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center">
+        <div class="font-vt323 text-6xl text-white tracking-widest mb-6">PAUSA</div>
+        <button id="btnResume" class="menu-option"><span class="menu-arrow">&gt;&gt;</span>Continuar</button>
+        <button id="btnPauseMenu" class="menu-option" style="margin-top:0.6rem;"><span class="menu-arrow">&gt;&gt;</span>Menú principal</button>
+    </div>
+
     <!-- ==================== MODAL DE ASSETS ==================== -->
     <div id="assetModal" class="hidden absolute inset-0 z-40 bg-black/95 flex items-center justify-center p-4">
         <div class="bg-gray-900 border border-yellow-600/50 p-6 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto space-y-4">
@@ -157,6 +187,8 @@
                 <li><strong class="text-white">Duración:</strong> Cada hora dura 89 segundos, como en el original (≈ 9 minutos por noche).</li>
                 <li><strong class="text-white">Alan:</strong> Mira la CAM 3 para mantenerlo quieto. Si sale corriendo por el pasillo, cierra la puerta izquierda.</li>
                 <li><strong class="text-white">Custom Night:</strong> Sube el nivel de cada uno de 0 a 20.</li>
+                <li><strong class="text-white">Teclas:</strong> <b>Espacio</b> abre/cierra el monitor · <b>Esc</b> pausa · <b>H</b> bocina de Ariel.</li>
+                <li><strong class="text-white">Estrellas:</strong> ★ Night 5 · ★ Night 6 · ★ Custom con todos en 20.</li>
             </ul>
             <button id="btnCloseModal" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-white rounded mt-4 text-xs font-bold">
                 Entendido
@@ -186,6 +218,10 @@
                 </div>
             </div>
         </div>
+
+        <!-- Llamada del profesor -->
+        <button id="btnMuteCall" class="hidden mute-call layer-hud">Silenciar llamada</button>
+        <div id="callSubtitle" class="hidden call-subtitle layer-hud"></div>
 
         <!-- OFICINA (la escena es más ancha que la pantalla y se desplaza con el mouse) -->
         <div id="officeView">
@@ -218,6 +254,7 @@
 
         <!-- APAGÓN -->
         <div id="blackoutOverlay" class="layer-blackout absolute inset-0"></div>
+        <img id="outageFace" alt="" class="hidden layer-outage absolute pointer-events-none">
 
         <!-- MONITOR DE CÁMARAS (cubre la oficina, puertas y botones) -->
         <div id="cameraMonitor" class="hidden layer-monitor absolute inset-0 bg-black overflow-hidden">
@@ -230,6 +267,7 @@
                 <img id="camAnimFoxy" alt="Alan" class="cam-sprite hidden">
             </div>
 
+            <div id="camGlitch" class="cam-glitch"></div>
             <div class="rec-dot"></div>
 
             <div class="cam-map">
@@ -278,9 +316,10 @@
 
     <!-- VICTORIA -->
     <div id="victoryMenu" class="hidden absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 text-center">
-        <h1 class="text-8xl font-vt323 text-yellow-400 tracking-widest mb-4 animate-pulse">6:00 AM</h1>
+        <h1 id="victoryTime" class="text-8xl font-vt323 text-yellow-400 tracking-widest mb-4 animate-pulse">5:00 AM</h1>
         <h2 class="text-2xl text-green-400 font-bold mb-2">¡HAS SOBREVIVIDO A LA NOCHE!</h2>
-        <p class="text-gray-400 text-sm mb-8">Completaste tu turno en 5 clases en programación.</p>
+        <p class="text-gray-400 text-sm mb-2">Completaste tu turno en 5 clases en programación.</p>
+        <p id="victorySummary" class="text-gray-300 text-sm mb-8"></p>
         <div class="flex flex-col gap-3">
             <button id="btnNextNight" class="px-8 py-3 bg-green-700 hover:bg-green-600 text-white font-bold rounded-lg transition cursor-pointer">
                 SIGUIENTE NOCHE
@@ -292,6 +331,7 @@
     </div>
 
     <!-- LÓGICA DEL JUEGO -->
+    <script src="static/js/minigames.js"></script>
     <script src="static/js/script.js"></script>
 </body>
 </html>
